@@ -26,6 +26,22 @@ def _env(name: str, default: str | None = None) -> str | None:
     value = value.strip()
     return value or default
 
+
+def _default_provider() -> str:
+    return _env("LLM_PROVIDER", "glm" if _env("GLM_API_KEY") else "gemini") or "gemini"
+
+
+def _default_model_for_provider(provider: str) -> str:
+    if provider == "glm":
+        return _env("GLM_MODEL", "glm-4.5v") or "glm-4.5v"
+    return _env("GEMINI_MODEL", "gemini-2.5-pro") or "gemini-2.5-pro"
+
+
+def _task_model(name: str, fallback: str) -> str:
+    provider = _default_provider()
+    provider_default = _default_model_for_provider(provider)
+    return _env(name) or provider_default or fallback
+
 # === 配置类定义 ===
 class EpicSettings(AgentConfig):
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
@@ -46,7 +62,7 @@ class EpicSettings(AgentConfig):
     )
 
     LLM_PROVIDER: str = Field(
-        default_factory=lambda: _env("LLM_PROVIDER", "glm" if _env("GLM_API_KEY") else "gemini"),
+        default_factory=_default_provider,
         description="Supported values: gemini, glm",
     )
 
@@ -70,28 +86,16 @@ class EpicSettings(AgentConfig):
     DISABLE_BEZIER_TRAJECTORY: bool = Field(default=True)
 
     CHALLENGE_CLASSIFIER_MODEL: str = Field(
-        default_factory=lambda: _env("CHALLENGE_CLASSIFIER_MODEL")
-        or _env("GLM_MODEL")
-        or _env("GEMINI_MODEL")
-        or "gemini-2.5-flash"
+        default_factory=lambda: _task_model("CHALLENGE_CLASSIFIER_MODEL", "gemini-2.5-flash")
     )
     IMAGE_CLASSIFIER_MODEL: str = Field(
-        default_factory=lambda: _env("IMAGE_CLASSIFIER_MODEL")
-        or _env("GLM_MODEL")
-        or _env("GEMINI_MODEL")
-        or "gemini-2.5-pro"
+        default_factory=lambda: _task_model("IMAGE_CLASSIFIER_MODEL", "gemini-2.5-pro")
     )
     SPATIAL_POINT_REASONER_MODEL: str = Field(
-        default_factory=lambda: _env("SPATIAL_POINT_REASONER_MODEL")
-        or _env("GLM_MODEL")
-        or _env("GEMINI_MODEL")
-        or "gemini-2.5-pro"
+        default_factory=lambda: _task_model("SPATIAL_POINT_REASONER_MODEL", "gemini-2.5-pro")
     )
     SPATIAL_PATH_REASONER_MODEL: str = Field(
-        default_factory=lambda: _env("SPATIAL_PATH_REASONER_MODEL")
-        or _env("GLM_MODEL")
-        or _env("GEMINI_MODEL")
-        or "gemini-2.5-pro"
+        default_factory=lambda: _task_model("SPATIAL_PATH_REASONER_MODEL", "gemini-2.5-pro")
     )
 
     cache_dir: Path = HCAPTCHA_DIR.joinpath(".cache")
