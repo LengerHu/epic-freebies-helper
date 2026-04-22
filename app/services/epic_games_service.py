@@ -187,6 +187,12 @@ class EpicGames:
         target.mkdir(parents=True, exist_ok=True)
         safe_reason = reason.lower().replace(" ", "_")
         await page.screenshot(path=target.joinpath(f"{safe_reason}-{stamp}.png"), full_page=True)
+        with suppress(Exception):
+            page_text = await page.locator("body").text_content()
+            target.joinpath(f"{safe_reason}-{stamp}.txt").write_text(
+                f"URL: {page.url}\nSOURCE_URL: {url}\n\n{page_text or ''}",
+                encoding="utf-8",
+            )
         logger.info(f"Saved purchase debug screenshot - reason={reason} url={url}")
 
     @staticmethod
@@ -290,7 +296,14 @@ class EpicGames:
 
         except Exception as err:
             logger.warning(f"Instant checkout warning (Game might still be claimed): {err}")
-            await page.reload()
+            await self._capture_purchase_debug(page, "instant_checkout_warning", page.url)
+            with suppress(Exception):
+                logger.debug(f"Instant checkout fallback | current_url={page.url}")
+            try:
+                await page.reload(timeout=10000)
+            except Exception as reload_err:
+                logger.warning(f"Page reload after instant checkout warning failed: {reload_err}")
+                await self._capture_purchase_debug(page, "instant_checkout_reload_failed", page.url)
 
     async def add_promotion_to_cart(self, page: Page, urls: List[str]) -> bool:
         has_pending_cart_items = False
