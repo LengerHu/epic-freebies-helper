@@ -1,15 +1,17 @@
-# Epic 免费人 | Epic Awesome Gamer
+# Epic 周免助手
 
-An Epic Games weekly-freebies claimer for normal users.
+An Epic Games weekly-freebies claimer for GitHub Actions.
 
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Ronchy2000/epic-awesome-gamer/epic-gamer.yml?branch=master&style=flat-square)](https://github.com/Ronchy2000/epic-awesome-gamer/actions/workflows/epic-gamer.yml)
 [![Python](https://img.shields.io/badge/python-3.12-blue?style=flat-square)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/Ronchy2000/epic-awesome-gamer?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/Ronchy2000/epic-awesome-gamer?style=flat-square)](https://github.com/Ronchy2000/epic-awesome-gamer/stargazers)
 
-一个面向普通用户的 Epic 周免自动领取项目。
+一个面向普通用户的 Epic 周免自动领取项目，最佳使用方式是直接跑在 GitHub Actions 上。
 
-你只需要准备 Epic 账号和一个多模态模型 API Key，就可以借助 GitHub Actions 定时运行，自动处理登录、周免领取，以及领取过程中可能出现的验证码和二次校验。
+如果你想尽量降低使用门槛和成本，这个项目最推荐直接使用 `GLM`。对新人来说，Google AI Studio 的 Gemini API 虽然有免费层，但还要考虑配额和可用地区；AiHubMix 官方文档的入门方式则要求账户余额大于 `$0`。相比之下，智谱官方当前提供免费视觉模型 [`glm-4.6v-flash`](https://docs.bigmodel.cn/cn/guide/models/free/glm-4.6v-flash)，如果你账号里还有可用的新用户免费额度，第一次跑通周免流程通常最省心，也最接近 `0` 成本。
+
+如果你的账号里 `glm-4.5v` 已经能稳定使用，也完全可以继续用；但对于 README 面向新用户的默认推荐，我更建议直接写成 `GLM`，再把示例模型写成 `glm-4.6v-flash`。
 
 ---
 
@@ -34,8 +36,10 @@ An Epic Games weekly-freebies claimer for normal users.
 | 原因 | 说明 |
 | --- | --- |
 | 门槛最低 | 只需要配置 `GLM_API_KEY` 和 `GLM_MODEL`，默认值已经帮你兜好 |
-| 对新人更友好 | 智谱官方提供免费视觉模型 [`glm-4.6v-flash`](https://docs.bigmodel.cn/cn/guide/models/free/glm-4.6v-flash)，新用户上手成本低 |
-| 价格最友好 | 对比大多数可用视觉模型，GLM 的使用门槛和成本都更低 |
+| 对新人更友好 | 智谱官方提供免费视觉模型 [`glm-4.6v-flash`](https://docs.bigmodel.cn/cn/guide/models/free/glm-4.6v-flash)，上手成本低 |
+| 更容易接近 0 成本 | 在免费额度覆盖期内，新用户跑通周免流程通常最省钱 |
+| 比 AiHubMix 更容易起步 | AiHubMix 官方快速开始要求先充值，账户余额需要大于 `$0` |
+| 比 Gemini 更省心 | Gemini 虽然有免费层，但还要考虑地区、配额和账号环境 |
 | 能力够用 | 可以直接处理登录验证码和 checkout 二次验证 |
 | 适配已经打通 | 当前仓库已经针对 GLM 的拖拽题、点选题和多选题做了兼容 |
 
