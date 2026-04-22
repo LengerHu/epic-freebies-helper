@@ -77,6 +77,7 @@
 | `GLM_MODEL` | glm-4.6v-flash |
 
 配置页面示例：
+![GLM API获取](docs/images/tutorial/GLM-API.png)
 
 ![GitHub Actions Secrets 配置示例](docs/images/tutorial/step2-actions-secrets.png)
 
@@ -109,8 +110,6 @@ All week-free games are already in the library
 示例日志（中间有报错但最终成功）：
 
 ![中间报错但最终成功的日志示例 1](docs/images/tutorial/step4-log-success-with-warnings-1.png)
-
-![中间报错但最终成功的日志示例 2](docs/images/tutorial/step4-log-success-with-warnings-2.png)
 
 ---
 
