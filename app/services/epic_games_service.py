@@ -133,7 +133,14 @@ class EpicAgent:
     async def _check_orders(self):
         await self._sync_order_history()
         self._namespaces = self._namespaces or [order.namespace for order in self._orders]
-        self._promotions = [p for p in get_promotions() if p.namespace not in self._namespaces]
+        all_promotions = get_promotions()
+        claimed_promotions = [p for p in all_promotions if p.namespace in self._namespaces]
+        self._promotions = [p for p in all_promotions if p.namespace not in self._namespaces]
+
+        for promotion in claimed_promotions:
+            logger.success(
+                f"Game already claimed previously - title='{promotion.title}' url='{promotion.url}'"
+            )
 
     async def _should_ignore_task(self) -> bool:
         self._ctx_cookies_is_available = False
@@ -154,7 +161,7 @@ class EpicAgent:
             return
 
         if not self._ctx_cookies_is_available:
-            return
+            raise RuntimeError("Epic Games session cookies are unavailable after authentication")
 
         if not self._promotions:
             await self._check_orders()
@@ -172,6 +179,7 @@ class EpicAgent:
                 await self.epic_games.collect_weekly_games(self._promotions)
             except Exception as e:
                 logger.exception(e)
+                raise
         
         logger.debug("All tasks in the workflow have been completed")
 
@@ -267,7 +275,7 @@ class EpicGames:
         return False
 
     @staticmethod
-    async def _is_claimed_state(page: Page, url: str) -> bool:
+    async def _claim_state_reason(page: Page, url: str) -> str | None:
         button_claim_markers = [
             "IN LIBRARY",
             "OWNED",
@@ -276,35 +284,47 @@ class EpicGames:
             "VIEW IN LIBRARY",
             "GO TO LIBRARY",
         ]
+
+        if URL_CART_SUCCESS in page.url:
+            return "cart success URL"
+
+        combined_text = await EpicGames._combined_text(page)
+        button_text = await EpicGames._purchase_button_text(page)
+
+        order_popup_markers = [
+            ("THANK YOU FOR YOUR ORDER", "ORDER NUMBER"),
+            ("THANK YOU FOR YOUR ORDER", "READY TO INSTALL YOUR PRODUCT"),
+        ]
         page_claim_markers = [
-            "THANK YOU FOR YOUR ORDER",
             "ORDER CONFIRMED",
             "IN YOUR LIBRARY",
             "VIEW IN LIBRARY",
             "GO TO LIBRARY",
         ]
 
-        if URL_CART_SUCCESS in page.url:
-            logger.success(f"Claim success inferred from cart success URL - {url=}")
-            return True
-
-        page_text = await EpicGames._page_text(page)
-        button_text = await EpicGames._purchase_button_text(page)
-
         for marker in button_claim_markers:
             if marker in button_text:
-                logger.success(
-                    f"Claim success inferred from purchase button marker '{marker}' - {url=}"
-                )
-                return True
+                return f"purchase button marker '{marker}'"
+
+        for primary_marker, secondary_marker in order_popup_markers:
+            if primary_marker in combined_text and secondary_marker in combined_text:
+                return f"checkout order confirmation markers '{primary_marker}' + '{secondary_marker}'"
 
         for marker in page_claim_markers:
-            if marker in page_text:
-                logger.success(f"Claim success inferred from page text marker '{marker}' - {url=}")
-                return True
+            if marker in combined_text:
+                return f"page/frame marker '{marker}'"
 
-        if "GET" == button_text and "DEVICE NOT SUPPORTED" in page_text:
+        if "GET" == button_text and "DEVICE NOT SUPPORTED" in combined_text:
             logger.warning(f"Page still shows Get and device modal text; claim is not complete - {url=}")
+
+        return None
+
+    @staticmethod
+    async def _is_claimed_state(page: Page, url: str) -> bool:
+        reason = await EpicGames._claim_state_reason(page, url)
+        if reason:
+            logger.success(f"Game already claimed / in library ({reason}) - {url=}")
+            return True
 
         return False
 
@@ -570,7 +590,7 @@ class EpicGames:
                     logger.success(f"🎉 Instant checkout confirmed claim state - {url=}")
                     return True
 
-                if state != "checkout":
+                if state != "checkout" or payload is None:
                     state, payload = await self._wait_for_purchase_state(page, url, timeout_ms=10000)
                     if state == "claimed":
                         logger.success(f"🎉 Instant checkout confirmed claim state after state refresh - {url=}")
@@ -636,7 +656,9 @@ class EpicGames:
 
             return False
 
-    async def add_promotion_to_cart(self, page: Page, urls: List[str]) -> tuple[bool, int, List[str]]:
+    async def add_promotion_to_cart(
+        self, page: Page, promotions: List[PromotionGame]
+    ) -> tuple[bool, int, List[str]]:
         has_pending_cart_items = False
         instant_claimed = 0
         failed_urls: List[str] = []
@@ -650,7 +672,9 @@ class EpicGames:
             "OWN THIS GAME",
         ]
 
-        for url in urls:
+        for promotion in promotions:
+            url = promotion.url
+            game_title = promotion.title
             await page.goto(url, wait_until="load")
 
             # 404 检测
@@ -681,7 +705,9 @@ class EpicGames:
                     # 再次检查是否在库中 (有时按钮不叫 purchase-cta，而是简单的 disabled button)
                     all_text = (await page.locator("body").text_content() or "").upper()
                     if any(marker in all_text for marker in owned_markers):
-                         logger.success(f"Already in the library (Page Text Scan) - {url=}")
+                         logger.success(
+                             f"Game already claimed / already in library (page text scan) - title='{game_title}' url='{url}'"
+                         )
                          continue
                     logger.warning(f"Could not find any purchase button - {url=}")
                     await self._capture_purchase_debug(page, "button_missing", url)
@@ -701,14 +727,18 @@ class EpicGames:
             # 4. 黑名单检查：只有这些情况绝对不能点
             # 如果是 'IN LIBRARY', 'OWNED', 'UNAVAILABLE', 'COMING SOON' -> 跳过
             if disabled is not None or aria_disabled == "true":
-                logger.success(f"Purchase button disabled - Skipping. {url=}")
+                logger.success(
+                    f"Game already claimed / unavailable (purchase button disabled) - title='{game_title}' text='{btn_text}' url='{url}'"
+                )
                 await self._capture_purchase_debug(page, "button_disabled", url)
                 continue
 
             if any(marker in btn_text_upper for marker in owned_markers) or any(
                 marker in container_text_upper for marker in owned_markers
             ):
-                logger.success(f"Game status is '{btn_text}' - Skipping.")
+                logger.success(
+                    f"Game already claimed / already in library - title='{game_title}' text='{btn_text}' url='{url}'"
+                )
                 continue
 
             # 5. 白名单检查 (Add to Cart 特殊处理)
@@ -788,8 +818,9 @@ class EpicGames:
 
     @retry(retry=retry_if_exception_type(TimeoutError), stop=stop_after_attempt(2), reraise=True)
     async def collect_weekly_games(self, promotions: List[PromotionGame]):
-        urls = [p.url for p in promotions]
-        has_cart_items, instant_claimed, failed_urls = await self.add_promotion_to_cart(self.page, urls)
+        has_cart_items, instant_claimed, failed_urls = await self.add_promotion_to_cart(
+            self.page, promotions
+        )
         cart_claimed = False
 
         if has_cart_items:

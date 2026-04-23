@@ -1,0 +1,84 @@
+name: Bug report
+description: Report a failed claim, login problem, or checkout/captcha issue
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting:
+
+        1. Open the failed GitHub Actions run.
+        2. Scroll to the bottom of the run summary page.
+        3. Download both artifacts:
+           - `epic-logs-<run_id>.zip`
+           - `epic-runtime-<run_id>.zip`
+        4. Create this issue and drag both zip files into the issue comment box, or click the attachment button and upload them.
+
+        Please do not paste only a short log excerpt. The full artifacts are usually required to diagnose checkout, captcha, and Epic page-state problems correctly.
+
+  - type: input
+    id: workflow_run_url
+    attributes:
+      label: GitHub Actions run URL
+      description: Paste the full URL of the failed or suspicious workflow run
+      placeholder: https://github.com/<your-account>/<your-repo>/actions/runs/1234567890
+    validations:
+      required: true
+
+  - type: dropdown
+    id: problem_type
+    attributes:
+      label: Problem type
+      options:
+        - Login failed
+        - Captcha failed
+        - Checkout failed
+        - Workflow showed success but game was not claimed
+        - The game was already claimed but the script did not recognize it
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and what you expected instead
+      placeholder: The workflow kept running for a long time and then stopped, but the game was already in library / not in library / etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Short, concrete steps. Include whether this was a manual run or scheduled run.
+      placeholder: |
+        1. Forked the repo
+        2. Configured secrets
+        3. Ran the workflow manually
+        4. The issue happened during login / checkout / after "Place Order"
+    validations:
+      required: true
+
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Required attachments
+      description: After creating the issue, drag and drop both zip files into the issue body or the first comment
+      value: |
+        Please attach both files:
+        - epic-logs-<run_id>.zip
+        - epic-runtime-<run_id>.zip
+
+        If you did not attach both files yet, please stop here and upload them first.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra context
+      description: Optional. Add screenshots, suspected cause, or anything else useful.

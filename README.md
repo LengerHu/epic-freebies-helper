@@ -148,6 +148,18 @@ All week-free games are already in the library
 
 这些内容是 GitHub Actions 每次运行后打包上传的产物，不是仓库根目录里预置好的固定目录。
 
+如果你要提 issue，请不要只粘贴一小段日志。最有用的做法是：
+
+1. 打开出问题的 GitHub Actions 运行页面。
+2. 拉到页面底部，找到 `Artifacts`。
+3. 下载这两个文件：
+   - `epic-logs-<run_id>.zip`
+   - `epic-runtime-<run_id>.zip`
+4. 新建 issue。
+5. 把这两个 zip 直接拖进 issue 编辑框，或者点击附件按钮上传。
+
+这两个 zip 里通常已经包含定位问题所需的完整日志、截图和 `purchase_debug` 文本。GitHub issue 支持直接上传 `.zip` 文件。
+
 ---
 
 ## 常见问题

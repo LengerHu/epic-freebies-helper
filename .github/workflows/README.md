@@ -103,3 +103,18 @@ GitHub 的共享出口 IP 可能被 Epic 风控。通常换个时间重新执行
 ### 3. 为什么每天跑一次而不是每周跑一次
 
 GitHub Actions 每天跑一次更稳妥。脚本内部会判断是否有新的周免内容，没有的话会直接结束。
+
+## 如何提 issue 才方便排查
+
+如果你遇到的是“登录失败”“checkout 卡住”“日志显示失败但实际已领取”“日志显示成功但实际没入库”这类问题，请按下面步骤提 issue：
+
+1. 打开出问题的 GitHub Actions 运行页面。
+2. 滚动到页面底部的 `Artifacts` 区域。
+3. 下载这两个文件：
+   - `epic-logs-<run_id>.zip`
+   - `epic-runtime-<run_id>.zip`
+4. 到仓库的 `Issues` 页面新建 bug issue。
+5. 把上面两个 zip 直接拖进 issue 编辑框，或者点击附件按钮上传。
+6. 同时附上本次 Actions 运行链接，并简单说明“期望结果”和“实际结果”。
+
+不要只贴一小段控制台日志。很多 checkout / captcha / 页面状态问题，必须结合完整的运行日志和 `purchase_debug` 文件一起看，才能真正定位。

@@ -42,7 +42,7 @@ init_log(
 TIMEZONE = timezone("Asia/Shanghai")
 
 
-@logger.catch
+@logger.catch(reraise=True)
 async def execute_browser_tasks(headless: bool = True):
     """
     Execute Epic Games free game collection tasks using browser automation.
@@ -74,8 +74,7 @@ async def execute_browser_tasks(headless: bool = True):
         agent = EpicAuthorization(page)
         is_authenticated = await agent.invoke()
         if not is_authenticated:
-            logger.error("Authentication failed, aborting this run")
-            return
+            raise RuntimeError("Authentication failed, aborting this run")
         logger.debug("Authentication completed")
 
         # Execute a free games collection on new page
