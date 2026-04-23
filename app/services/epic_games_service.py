@@ -16,6 +16,7 @@ from hcaptcha_challenger.agent import AgentV
 from loguru import logger
 from playwright.async_api import Page
 from playwright.async_api import expect, TimeoutError, FrameLocator
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from models import OrderItem, Order
@@ -110,6 +111,22 @@ class EpicAgent:
         self._namespaces: List[str] = []
         self._cookies = None
 
+    def _needs_privacy_policy_correction(self) -> bool:
+        return "/id/login/correction/privacy-policy" in self.page.url
+
+    async def _get_login_status(self) -> str | None:
+        if self._needs_privacy_policy_correction():
+            return None
+
+        try:
+            return await self.page.locator("//egs-navigation").get_attribute("isloggedin")
+        except PlaywrightTimeoutError:
+            logger.warning(
+                "Timed out while waiting for //egs-navigation on claim page | current_url='{}'",
+                self.page.url,
+            )
+            return None
+
     async def _sync_order_history(self):
         if self._orders:
             return
@@ -145,10 +162,23 @@ class EpicAgent:
     async def _should_ignore_task(self) -> bool:
         self._ctx_cookies_is_available = False
         await self.page.goto(URL_CLAIM, wait_until="domcontentloaded")
-        status = await self.page.locator("//egs-navigation").get_attribute("isloggedin")
+
+        if self._needs_privacy_policy_correction():
+            raise RuntimeError(
+                "Epic account requires a manual privacy-policy confirmation. "
+                "Please sign in once in a normal browser, complete the confirmation page, "
+                "and rerun the workflow."
+            )
+
+        status = await self._get_login_status()
         if status == "false":
             logger.error("❌ context cookies is not available")
             return False
+        if status is None:
+            raise RuntimeError(
+                f"Could not determine Epic login state because //egs-navigation did not appear. "
+                f"current_url={self.page.url}"
+            )
         self._ctx_cookies_is_available = True
         await self._check_orders()
         if not self._promotions:

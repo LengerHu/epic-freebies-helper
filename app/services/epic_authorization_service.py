@@ -13,6 +13,7 @@ from contextlib import suppress
 from hcaptcha_challenger.agent import AgentV
 from loguru import logger
 from playwright.async_api import expect, Page, Response
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from settings import SCREENSHOTS_DIR, settings
 
@@ -66,6 +67,22 @@ class EpicAuthorization:
                     await reminder_btn.click(timeout=1000)
                     btn_ids.remove(action)
 
+    def _needs_privacy_policy_correction(self) -> bool:
+        return "/id/login/correction/privacy-policy" in self.page.url
+
+    async def _get_login_status(self) -> str | None:
+        if self._needs_privacy_policy_correction():
+            return None
+
+        try:
+            return await self.page.locator("//egs-navigation").get_attribute("isloggedin")
+        except PlaywrightTimeoutError:
+            logger.warning(
+                "Timed out while waiting for //egs-navigation during auth check | current_url='{}'",
+                self.page.url,
+            )
+            return None
+
     async def _login(self) -> bool | None:
         # 尽可能早地初始化机器人
         agent = AgentV(page=self.page, agent_config=settings)
@@ -117,7 +134,14 @@ class EpicAuthorization:
         for _ in range(3):
             await self.page.goto(URL_CLAIM, wait_until="domcontentloaded")
 
-            if "true" == await self.page.locator("//egs-navigation").get_attribute("isloggedin"):
+            if self._needs_privacy_policy_correction():
+                logger.error(
+                    "Epic account requires a manual privacy-policy confirmation | current_url='{}'",
+                    self.page.url,
+                )
+                return False
+
+            if "true" == await self._get_login_status():
                 logger.success("Epic Games is already logged in")
                 return True
 
