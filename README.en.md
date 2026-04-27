@@ -202,6 +202,8 @@ The project can already handle this secondary verification. Seeing the popup bel
 
 This usually happens when the product officially supports Windows while GitHub Actions is running on Linux.
 
+By itself, this does not always mean the claim failed. The current automation will try to click `Continue` on that dialog and keep going.
+
 ### 5. Why can the workflow report success while the game is not in the library?
 
 Historically, the common root causes were:
@@ -265,6 +267,7 @@ If you want the project structure, adapter details, and developer-oriented troub
 - [Advanced Guide](docs/advanced.en.md)
 - [GitHub Actions Guide](.github/workflows/README.en.md)
 - [Development Log (2026-04-22)](docs/development-log-2026-04-22.en.md)
+- [Maintenance Log](docs/maintenance-log.md)
 
 ---
 

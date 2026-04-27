@@ -511,11 +511,38 @@ class EpicGames:
         return False
 
     @staticmethod
+    async def _is_device_not_supported_visible(page: Page) -> bool:
+        try:
+            body_text = await EpicGames._page_text(page)
+        except Exception:
+            return False
+
+        if "DEVICE NOT SUPPORTED" not in body_text:
+            return False
+
+        if not ("CANCEL" in body_text and "CONTINUE" in body_text):
+            return False
+
+        candidates = [
+            page.get_by_role("button", name="Continue"),
+            page.locator(
+                "//button[normalize-space(.)='Continue' or .//span[normalize-space(.)='Continue']]"
+            ),
+        ]
+        for locator in candidates:
+            if await EpicGames._is_locator_visible(locator, timeout=250):
+                return True
+        return False
+
+    @staticmethod
     async def _has_purchase_progress(page: Page, url: str) -> bool:
         if URL_CART_SUCCESS in page.url:
             return True
 
         if await EpicGames._is_claimed_state(page, url):
+            return True
+
+        if await EpicGames._is_device_not_supported_visible(page):
             return True
 
         if await EpicGames._is_checkout_security_check_visible(page):
@@ -596,12 +623,7 @@ class EpicGames:
         captured = False
 
         while elapsed < timeout_ms:
-            try:
-                body_text = await EpicGames._page_text(page)
-            except Exception:
-                body_text = ""
-
-            if "DEVICE NOT SUPPORTED" in body_text:
+            if await EpicGames._is_device_not_supported_visible(page):
                 logger.warning(
                     f"Device not supported modal detected - attempting to continue. {url=}"
                 )
@@ -612,7 +634,7 @@ class EpicGames:
                 try:
                     if await EpicGames._click_visible_continue_button(page):
                         await page.wait_for_timeout(2000)
-                        if "DEVICE NOT SUPPORTED" not in await EpicGames._page_text(page):
+                        if not await EpicGames._is_device_not_supported_visible(page):
                             logger.success("Dismissed device not supported modal")
                             return True
 

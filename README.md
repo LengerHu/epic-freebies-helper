@@ -215,6 +215,8 @@ All week-free games are already in the library
 
 这个提示通常出现在商品只支持 Windows，而 GitHub Actions 运行环境是 Linux 的时候。
 
+它本身不一定代表领取失败。当前脚本会尝试自动点击弹窗里的 `Continue` 继续进入后续流程。
+
 ### 5. 为什么工作流显示成功，但游戏没入库
 
 过去常见根因有：
@@ -277,6 +279,7 @@ docker compose up -d --build
 
 - [开发者进阶文档](docs/advanced.md)
 - [Advanced Guide (English)](docs/advanced.en.md)
+- [维护日志](docs/maintenance-log.md)
 
 ---
 
