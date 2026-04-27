@@ -14,7 +14,7 @@ from typing import List
 import httpx
 from hcaptcha_challenger.agent import AgentV
 from loguru import logger
-from playwright.async_api import Page
+from playwright.async_api import Frame, Page
 from playwright.async_api import expect, TimeoutError, FrameLocator
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
@@ -37,6 +37,7 @@ URL_PRODUCT_BUNDLES = "https://store.epicgames.com/en-US/bundles/"
 PURCHASE_IFRAME_SELECTOR = (
     "//iframe[contains(@id, 'webPurchaseContainer') or contains(@src, 'purchase')]"
 )
+PurchaseContainer = FrameLocator | Frame | Page
 
 
 def get_promotions() -> List[PromotionGame]:
@@ -530,7 +531,24 @@ class EpicGames:
             if any(marker in button_text for marker in ("IN CART", "VIEW IN CART", "CHECK OUT")):
                 return True
 
+        for frame_text in await EpicGames._frame_texts(page):
+            if EpicGames._looks_like_checkout_frame(frame_text):
+                return True
+
         return False
+
+    @staticmethod
+    def _looks_like_checkout_frame(text: str) -> bool:
+        normalized = " ".join((text or "").upper().split())
+        if not normalized:
+            return False
+
+        checkout_markers = (
+            ("CHECKOUT", "PLACE ORDER"),
+            ("REVIEW AND PLACE ORDER", "ORDER SUMMARY"),
+            ("VERIFY YOUR INFORMATION", "ORDER SUMMARY"),
+        )
+        return any(all(marker in normalized for marker in markers) for markers in checkout_markers)
 
     @staticmethod
     async def _click_by_coordinates(page: Page, locator) -> None:
@@ -683,11 +701,43 @@ class EpicGames:
             logger.debug("✅ Found button via CSS class match")
             return wpc, confirm_btn
         except AssertionError:
-            logger.warning("Primary buttons not found in iframe.")
-            raise AssertionError("Could not find Place Order button in iframe")
+            pass
+
+        logger.debug(
+            "Primary checkout buttons not found with purchase iframe selector; scanning frames."
+        )
+
+        containers = [*page.frames, page]
+        for container in containers:
+            with suppress(Exception):
+                body_text = await container.locator("body").inner_text(timeout=500)
+                if not EpicGames._looks_like_checkout_frame(body_text):
+                    continue
+
+                place_order_btn = container.locator("button", has_text="PLACE ORDER")
+                confirm_btn = container.locator(
+                    "//button[contains(@class, 'payment-confirm__btn')]"
+                )
+
+                try:
+                    await expect(place_order_btn).to_be_visible(timeout=place_order_timeout)
+                    logger.debug("✅ Found 'PLACE ORDER' button by scanning checkout containers")
+                    return container, place_order_btn
+                except AssertionError:
+                    pass
+
+                try:
+                    await expect(confirm_btn).to_be_visible(timeout=confirm_timeout)
+                    logger.debug("✅ Found payment confirm button by scanning checkout containers")
+                    return container, confirm_btn
+                except AssertionError:
+                    pass
+
+        logger.warning("Primary buttons not found in checkout containers.")
+        raise AssertionError("Could not find Place Order button in checkout containers")
 
     @staticmethod
-    async def _uk_confirm_order(wpc: FrameLocator):
+    async def _uk_confirm_order(wpc: PurchaseContainer):
         logger.debug("UK confirm order")
         with suppress(TimeoutError):
             accept = wpc.locator("//button[contains(@class, 'payment-confirm__btn')]")
@@ -729,7 +779,7 @@ class EpicGames:
 
     async def _wait_for_checkout_ready(
         self, page: Page, url: str, timeout_ms: int = 15000
-    ) -> tuple[FrameLocator, object] | None:
+    ) -> tuple[PurchaseContainer, object] | None:
         elapsed = 0
 
         while elapsed < timeout_ms:
