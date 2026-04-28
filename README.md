@@ -234,25 +234,49 @@ All week-free games are already in the library
 
 处理方式很简单：先在你自己的正常浏览器里手动登录 Epic，完成这个确认页，然后再重新运行 Actions。
 
-### 3. 页面弹出 `One more step`
+### 3. 日志里出现 `two_factor_authentication.required` 或页面跳到 `/id/login/mfa`
+
+这说明 Epic 账号的二步验证还没有关闭。当前项目不支持处理 Epic 的邮箱 / 短信 / 验证器二步验证，所以这类情况需要先在 Epic 账号设置里手动关闭，再重新运行。
+
+如果你看到下面这些信号，通常都可以按“2FA 没关”处理：
+
+- `errors.com.epicgames.common.two_factor_authentication.required`
+- `Two-Factor authentication required to process request`
+- 页面跳转到 `/id/login/mfa`
+
+处理方式：
+
+1. 在你自己的正常浏览器里登录 Epic 账号
+2. 进入账号安全设置页面
+3. 把当前启用的验证方式全部点 `Remove`
+4. 确认邮箱验证、短信验证、验证器等二步验证都已关闭
+5. 重新运行 Actions
+
+参考界面如下：
+
+![Epic 2FA remove methods](docs/images/faq/epic-2fa-remove-methods.png)
+
+### 4. 页面弹出 `One more step`
 
 这不是异常，是 Epic 结账阶段追加的人机校验。
 
-**说明**：此为 Epic 结账阶段追加的安全校验机制。项目已适配该环节的自动化处理逻辑，弹窗如遇如下提示属正常运作流程ges/faq/checkout-security-check.png)
+**说明**：此为 Epic 结账阶段追加的安全校验机制。项目已适配该环节的自动化处理逻辑，出现这类弹窗不代表脚本已经失效。
 
-### 4. 页面提示 `Device not supported`
+![Checkout Security Check](docs/images/faq/checkout-security-check.png)
+
+### 5. 页面提示 `Device not supported`
 
 这个提示通常出现在商品只支持 Windows，而 GitHub Actions 运行环境是 Linux 的时候。
 
 它本身不一定代表领取失败。当前脚本会尝试自动点击弹窗里的 `Continue` 继续进入后续流程。
 
-### 5. 为什么工作流显示成功，但游戏没入库
+### 6. 为什么工作流显示成功，但游戏没入库
 
 过去常见根因有：
 
 | 原因 | 说明 |
 | --- | --- |
-常见阻因包括识别不准 | 页面文案和实际状态不一致 |
+| 商品页状态识别不准 | 页面文案和实际状态不一致 |
 | `Place Order` 已点击但未完成 | 结账页仍停留在二次验证 |
 | 页面出现额外弹窗 | 例如设备不支持、额外确认 |
 | 旧逻辑误判 | 曾经把普通文案误判成“已拥有” |

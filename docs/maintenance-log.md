@@ -161,6 +161,39 @@
   - 补充 4 个任务模型覆盖项的回落规则和示例值。
   - 在 `.env.example` 中补充覆盖项的填写说明，降低配置门槛。
 
+### 检测到 Epic 2FA 必需时立即终止认证流程
+
+- 现象：
+  - 某些账号虽然已经通过验证码，但在 `POST /id/api/login` 后立即返回 `errors.com.epicgames.common.two_factor_authentication.required`。
+  - 旧流程会把这类情况当作普通登录失败继续进入后续重试，浪费运行时间，也不利于用户快速判断根因。
+- 根因判断：
+  - 当前项目不支持处理 Epic 的邮箱 / 短信 / 验证器二步验证。
+  - 对这类错误继续重试没有意义，应该直接作为不可恢复错误终止。
+- 改动文件：
+  - `app/services/epic_authorization_service.py`
+  - `docs/maintenance-log.md`
+- 处理结果：
+  - 为 `two_factor_authentication.required` 增加单独识别逻辑。
+  - 一旦检测到 Epic 2FA 仍处于开启状态，认证流程会立即终止，不再继续后续重试。
+  - 日志中会给出明确提示：该项目不支持 Epic 2FA，需先关闭 2FA 后再重跑。
+
+### 在 README 中补充 Epic 2FA 关闭说明并移动教程图
+
+- 现象：
+  - 根目录存在一张 Epic 2FA 设置界面的教程图，但还没有纳入 README 的常见问题说明。
+  - 用户遇到 `two_factor_authentication.required` 时，虽然能从日志判断是 2FA 问题，但文档中缺少直接对应的处理步骤和配图。
+- 根因判断：
+  - 2FA 是当前项目明确不支持的登录前置条件之一，应该在 README 里单独给出处理方式，而不是仅靠 issue 或口头说明传播。
+- 改动文件：
+  - `README.md`
+  - `README.en.md`
+  - `docs/images/faq/epic-2fa-remove-methods.png`
+  - `docs/maintenance-log.md`
+- 处理结果：
+  - 将根目录教程图移动到 `docs/images/faq/epic-2fa-remove-methods.png`。
+  - 在中英文 README 的 FAQ 中新增 2FA 专项说明，明确列出典型报错和 `/id/login/mfa` 跳转信号。
+  - 补充处理步骤，并配图说明：进入 Epic 安全设置页面后，把启用的验证方式全部 `Remove` 掉。
+
 ### 重新补回 Codex 的 Karpathy 风格工作准则
 
 - 现象：

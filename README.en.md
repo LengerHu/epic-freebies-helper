@@ -221,25 +221,49 @@ This is usually not a model-provider issue. It is an Epic account state issue. S
 
 The fix is simple: sign in to Epic once in a normal browser, complete that confirmation page manually, and then rerun the workflow.
 
-### 3. The page shows `One more step`
+### 3. Logs show `two_factor_authentication.required` or the page goes to `/id/login/mfa`
+
+This means Epic two-factor authentication is still enabled on the account. The current project does not support Epic email / SMS / authenticator-based 2FA, so you need to disable it in the Epic account settings before rerunning the workflow.
+
+If you see signals like these, treat them as “Epic 2FA is still enabled”:
+
+- `errors.com.epicgames.common.two_factor_authentication.required`
+- `Two-Factor authentication required to process request`
+- A redirect to `/id/login/mfa`
+
+How to fix it:
+
+1. Sign in to the Epic account in a normal browser
+2. Open the account security settings page
+3. Click `Remove` for every enabled verification method
+4. Make sure email, SMS, authenticator, and any other Epic 2FA methods are all disabled
+5. Rerun the workflow
+
+Reference page:
+
+![Epic 2FA remove methods](docs/images/faq/epic-2fa-remove-methods.png)
+
+### 4. The page shows `One more step`
 
 This is not automatically a bug. It is Epic's extra human-verification step during checkout.
 
-**Description**: This represents an additional security verification required by Epic during checkout. The workflow includes logic to handle this automatedly without manual intervention. Seeing the following prompt is normal
+**Description**: This is an additional security verification step during checkout. The workflow already contains automation logic for this stage, so seeing the prompt below does not automatically mean the script is broken.
 
-### 4. The page shows `Device not supported`
+![Checkout Security Check](docs/images/faq/checkout-security-check.png)
+
+### 5. The page shows `Device not supported`
 
 This usually happens when the product officially supports Windows while GitHub Actions is running on Linux.
 
 By itself, this does not always mean the claim failed. The current automation will try to click `Continue` on that dialog and keep going.
 
-### 5. Why can the workflow report success while the game is not in the library?
+### 6. Why can the workflow report success while the game is not in the library?
 
 Historically, the common root causes were:
 
 | Cause | Description |
 | --- | --- |
-Common causes includccurate | The page copy and the real state did not match |
+| Product-page state recognition was inaccurate | The page copy and the real state did not match |
 | `Place Order` was clicked but checkout was still incomplete | The checkout page was still blocked by a security check |
 | Another popup interrupted the flow | For example `Device not supported` or an extra confirmation |
 | Older logic misclassified page text | Some non-ownership text was previously misread as "already owned" |
